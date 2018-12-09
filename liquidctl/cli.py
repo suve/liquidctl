@@ -83,11 +83,11 @@ def _filter_devices(devices, args):
         return [devices[int(args['--device'])]]
     sel = []
     for i, dev in devices:
-        und = dev.device
-        if (selected(und['vendor_id'], '--vendor') and
-            selected(und['product_id'], '--product') and
-            selected(und['interface_number'], '--usb-port') and
-            (not args['--serial'] or und.serial_number == args['--serial'])):
+        info = dev.info
+        if (selected(info['vendor_id'], '--vendor') and
+            selected(info['product_id'], '--product') and
+            selected(info['interface_number'], '--usb-port') and
+            (not args['--serial'] or info['serial_number'] == args['--serial'])):
             # --serial handled differently to avoid unnecessary root
             sel.append((i, dev))
     return sel
@@ -95,14 +95,14 @@ def _filter_devices(devices, args):
 
 def _list_devices(devices, args):
     for i, dev in devices:
-        und = dev.device
+        info = dev.info
         print('Device {}, {}'.format(i, dev.description))
         if args['--verbose']:
-            print('  Vendor: {:#06x}'.format(und['vendor_id']))
-            print('  Product: {:#06x}'.format(und['product_id']))
-            print('  Port number: {}'.format(und['interface_number']))
+            print('  Vendor: {:#06x}'.format(info['vendor_id']))
+            print('  Product: {:#06x}'.format(info['product_id']))
+            print('  Port number: {}'.format(info['interface_number']))
             try:
-                print('  Serial number: {}'.format(und.serial_number or '<empty>'))
+                print('  Serial number: {}'.format(info['serial_number'] or '<empty>'))
             except:
                 print('  Serial number: <n/a> (try again as root)')
             hier = [i.__name__ for i in inspect.getmro(type(dev)) if i != object]

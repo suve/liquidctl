@@ -41,11 +41,8 @@ class BaseUsbDriver(object):
     def __init__(self, device, description):
         """Instantiate a driver with a device handle."""
         self.device = device
-        self.hid_device = hid.device()
-        self.hid_device.open(self.device['vendor_id'], self.device['product_id'])
         self.description = description
         self.dry_run = False
-        self._should_reattach_kernel_driver = False
 
     @classmethod
     def find_supported_devices(cls):
@@ -55,12 +52,12 @@ class BaseUsbDriver(object):
         """
         drivers = []
         for vid, pid, ver, description, kwargs in cls.SUPPORTED_DEVICES:
-            for dev in hid.enumerate():
-                if dev['vendor_id'] == vid and dev['product_id'] == pid:
-                    # TODO not sure `release_number` is correct here, but looks like it
-                    if ver and (dev['release_number'] < ver[0] or dev['release_number'] > ver[1]):
-                        continue
-                    drivers.append(cls(dev, description, **kwargs))
+            for info in hid.enumerate(vid, pid):
+                if ver and (info['release_number'] < ver[0] or info['release_number'] > ver[1]):
+                    continue
+                dev = cls(hid.device(), description, **kwargs)
+                dev.info = info  # FIXME remove this dirty hack
+                drivers.append(dev)
         return drivers
 
     def connect(self):
@@ -69,11 +66,10 @@ class BaseUsbDriver(object):
         Replace the kernel driver (Linux only) and set the device configuration
         to the first available one, if none has been set.
         """
-        if sys.platform.startswith('linux') and self.device.is_kernel_driver_active(0):
-            LOGGER.debug('detaching currently active kernel driver')
-            self.device.detach_kernel_driver(0)
-            self._should_reattach_kernel_driver = True
-        # TODO do we need this?
+        self.device.open_path(self.info['path'])
+        # TODO see how hidapi works internally and check if we still need to
+        # prevent soft resets due to resetting the device configuration
+        # (see: libusb's docs for libusb_set_configuration)
         #cfg = self.device.get_active_configuration()
         #if cfg is None:
         #    LOGGER.debug('setting the (first) configuration')
@@ -86,9 +82,7 @@ class BaseUsbDriver(object):
         """
         # TODO figure this out
         #usb.util.dispose_resources(self.device)
-        #if self._should_reattach_kernel_driver:
-        #    LOGGER.debug('reattaching previously active kernel driver')
-        #    self.device.attach_kernel_driver(0)
+        self.device.close()
 
     def initialize(self):
         """Initialize the device.

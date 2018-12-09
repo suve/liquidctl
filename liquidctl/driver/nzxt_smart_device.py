@@ -158,7 +158,8 @@ class NzxtSmartDeviceDriver(BaseUsbDriver):
         """
         self._write([0x1, 0x5c])  # initialize/detect connected devices and their type
         self._write([0x1, 0x5d])  # start reporting
-        usb.util.dispose_resources(self.device)
+        # TODO release the interface for other programs to use
+        # usb.util.dispose_resources(self.device)
 
     def get_status(self):
         """Get a status report.
@@ -168,7 +169,7 @@ class NzxtSmartDeviceDriver(BaseUsbDriver):
         status = []
         noise = []
         for i, _ in enumerate(self._speed_channels):
-            msg = self.device.read(_READ_ENDPOINT, _READ_LENGTH, _READ_TIMEOUT)
+            msg = self.device.read(_READ_LENGTH)
             LOGGER.debug('received %s', ' '.join(format(i, '02x') for i in msg))
             num = (msg[15] >> 4) + 1
             state = msg[15] & 0x3
@@ -190,7 +191,8 @@ class NzxtSmartDeviceDriver(BaseUsbDriver):
                     status.append(('LED accessory type', ltype, ''))
                     status.append(('LED count (total)', lcount*lsize, ''))
         status.append(('Noise level', round(sum(noise)/len(noise)), 'dB'))
-        usb.util.dispose_resources(self.device)
+        # TODO release the interface for other programs to use
+        # usb.util.dispose_resources(self.device)
         return sorted(status)
 
     def set_color(self, channel, mode, colors, speed):
@@ -226,7 +228,8 @@ class NzxtSmartDeviceDriver(BaseUsbDriver):
             byte4 = sval | seq | mod4
             self._write([0x2, 0x4b, mval, mod3, byte4] + leds[0:57])
             self._write([0x3] + leds[57:])
-        usb.util.dispose_resources(self.device)
+        # TODO release the interface for other programs to use
+        # usb.util.dispose_resources(self.device)
 
     def set_fixed_speed(self, channel, speed):
         """Set channel to a fixed speed."""
@@ -237,7 +240,8 @@ class NzxtSmartDeviceDriver(BaseUsbDriver):
             speed = smax
         LOGGER.info('setting %s duty to %i%%', channel, speed)
         self._write([0x2, 0x4d, cid, 0, speed])
-        usb.util.dispose_resources(self.device)
+        # TODO release the interface for other programs to use
+        # usb.util.dispose_resources(self.device)
 
     def _write(self, data):
         padding = [0x0]*(_WRITE_LENGTH - len(data))
@@ -245,5 +249,5 @@ class NzxtSmartDeviceDriver(BaseUsbDriver):
                      ' '.join(format(i, '02x') for i in data), len(padding))
         if self.dry_run:
             return
-        self.device.write(_WRITE_ENDPOINT, data + padding, _WRITE_TIMEOUT)
+        self.device.write(data + padding)
 
