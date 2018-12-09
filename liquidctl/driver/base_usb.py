@@ -20,8 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import sys
 import logging
 
-import usb.core
-import usb.util
+import hid
 
 
 LOGGER = logging.getLogger(__name__)
@@ -42,6 +41,8 @@ class BaseUsbDriver(object):
     def __init__(self, device, description):
         """Instantiate a driver with a device handle."""
         self.device = device
+        self.hid_device = hid.device()
+        self.hid_device.open(self.device['vendor_id'], self.device['product_id'])
         self.description = description
         self.dry_run = False
         self._should_reattach_kernel_driver = False
@@ -54,11 +55,12 @@ class BaseUsbDriver(object):
         """
         drivers = []
         for vid, pid, ver, description, kwargs in cls.SUPPORTED_DEVICES:
-            usbdevs = usb.core.find(idVendor=vid, idProduct=pid, find_all=True)
-            for dev in usbdevs:
-                if ver and (dev.bcdDevice < ver[0] or dev.bcdDevice > ver[1]):
-                    continue
-                drivers.append(cls(dev, description, **kwargs))
+            for dev in hid.enumerate():
+                if dev['vendor_id'] == vid and dev['product_id'] == pid:
+                    # TODO not sure `release_number` is correct here, but looks like it
+                    if ver and (dev['release_number'] < ver[0] or dev['release_number'] > ver[1]):
+                        continue
+                    drivers.append(cls(dev, description, **kwargs))
         return drivers
 
     def connect(self):
@@ -71,20 +73,22 @@ class BaseUsbDriver(object):
             LOGGER.debug('detaching currently active kernel driver')
             self.device.detach_kernel_driver(0)
             self._should_reattach_kernel_driver = True
-        cfg = self.device.get_active_configuration()
-        if cfg is None:
-            LOGGER.debug('setting the (first) configuration')
-            self.device.set_configuration()
+        # TODO do we need this?
+        #cfg = self.device.get_active_configuration()
+        #if cfg is None:
+        #    LOGGER.debug('setting the (first) configuration')
+        #    self.device.set_configuration()
 
     def disconnect(self):
         """Disconnect from the device.
 
         Clean up and (Linux only) reattach the kernel driver.
         """
-        usb.util.dispose_resources(self.device)
-        if self._should_reattach_kernel_driver:
-            LOGGER.debug('reattaching previously active kernel driver')
-            self.device.attach_kernel_driver(0)
+        # TODO figure this out
+        #usb.util.dispose_resources(self.device)
+        #if self._should_reattach_kernel_driver:
+        #    LOGGER.debug('reattaching previously active kernel driver')
+        #    self.device.attach_kernel_driver(0)
 
     def initialize(self):
         """Initialize the device.

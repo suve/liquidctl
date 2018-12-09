@@ -39,8 +39,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import itertools
 import logging
 
-import usb.util
-
 import liquidctl.util
 from liquidctl.driver.base_usb import BaseUsbDriver
 
@@ -162,7 +160,8 @@ class KrakenTwoDriver(BaseUsbDriver):
             logo = [leds[0][1], leds[0][0], leds[0][2]]
             ring = list(itertools.chain(*leds[1:]))
             self._write([0x2, 0x4c, byte2, mval, byte4] + logo + ring)
-        usb.util.dispose_resources(self.device)
+        # TODO figure this out
+        # usb.util.dispose_resources(self.device)
 
     def _generate_steps(self, colors, mincolors, maxcolors, mode, ringonly):
         colors = list(colors)
@@ -206,7 +205,8 @@ class KrakenTwoDriver(BaseUsbDriver):
             LOGGER.info('setting %s PWM duty to %i%% for liquid temperature >= %i°C',
                          channel, duty, temp)
             self._write([0x2, 0x4d, cbase + i, temp, duty])
-        usb.util.dispose_resources(self.device)
+        # TODO figure this out
+        # usb.util.dispose_resources(self.device)
 
     def set_fixed_speed(self, channel, speed):
         """Set channel to a fixed speed."""
@@ -228,7 +228,8 @@ class KrakenTwoDriver(BaseUsbDriver):
             speed = smax
         LOGGER.info('setting %s PWM duty to %i%%', channel, speed)
         self._write([0x2, 0x4d, cbase & 0x70, 0, speed])
-        usb.util.dispose_resources(self.device)
+        # TODO figure this out
+        # usb.util.dispose_resources(self.device)
 
     @property
     def supports_cooling_profiles(self):
@@ -241,8 +242,9 @@ class KrakenTwoDriver(BaseUsbDriver):
         return self._supports_cooling_profiles
 
     def _read(self):
-        msg = self.device.read(_READ_ENDPOINT, _READ_LENGTH, _READ_TIMEOUT)
-        usb.util.dispose_resources(self.device)
+        msg = self.hid_device.read(_READ_LENGTH)
+        # TODO figure this out
+        # usb.util.dispose_resources(self.device)
         LOGGER.debug('received %s', ' '.join(format(i, '02x') for i in msg))
         self._firmware_version = (msg[0xb], msg[0xc] << 8 | msg[0xd], msg[0xe])
         return msg
@@ -253,7 +255,8 @@ class KrakenTwoDriver(BaseUsbDriver):
                      ' '.join(format(i, '02x') for i in data), len(padding))
         if self.dry_run:
             return
-        self.device.write(_WRITE_ENDPOINT, data + padding, _WRITE_TIMEOUT)
+        self.hid_device.write(data + padding)
+        # self.device.write(_WRITE_ENDPOINT, data + padding, _WRITE_TIMEOUT)
 
     def initialize(self):
         """NOOP.
